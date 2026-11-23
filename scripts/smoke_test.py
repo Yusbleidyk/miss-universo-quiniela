@@ -67,7 +67,7 @@ def avanzar():
     assert r.status == 200
 
 
-rondas = ["groups", "top30", "top12", "top5", "top2"]
+rondas = ["groups", "top30", "top12", "top5", "top3"]
 for ronda in rondas:
     r = get("/")
     print(f"GET / -> {r.status}")

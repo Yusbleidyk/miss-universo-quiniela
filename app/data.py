@@ -144,6 +144,9 @@ CUOTAS_GRUPOS: dict[str, int] = {
 }
 
 # Secuencia de rondas y cuantas avanzan en cada una (todas menos "groups",
-# que usa CUOTAS_GRUPOS por continente en vez de un numero unico).
-ORDEN_RONDAS: list[str] = ["groups", "top30", "top12", "top5", "top2", "done"]
-CUPO_RONDA: dict[str, int] = {"top30": 12, "top12": 5, "top5": 2, "top2": 1}
+# que usa CUOTAS_GRUPOS por continente en vez de un numero unico). Calca el
+# formato oficial de la noche final de Miss Universe (edicion 2025, la mas
+# reciente confirmada): Top30 -> Top12 (traje de bano) -> Top5 (vestido de
+# noche) -> Top3 (preguntas) -> ganadora (pregunta final).
+ORDEN_RONDAS: list[str] = ["groups", "top30", "top12", "top5", "top3", "done"]
+CUPO_RONDA: dict[str, int] = {"top30": 12, "top12": 5, "top5": 3, "top3": 1}

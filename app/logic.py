@@ -58,9 +58,9 @@ def cupo_por_continente(continente: str) -> int:
 
 NOMBRES_RONDA = {
     "groups": "Fase de grupos (por continente)",
-    "top30": "Top 30",
-    "top12": "Top 12",
-    "top5": "Top 5",
-    "top2": "Top 2",
+    "top30": "Top 30 - Ronda de traje de bano",
+    "top12": "Top 12 - Ronda de vestido de noche",
+    "top5": "Top 5 - Ronda de preguntas",
+    "top3": "Top 3 - Pregunta final",
     "done": "\U0001f451 Tenemos ganadora",
 }
