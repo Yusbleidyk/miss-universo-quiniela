@@ -74,9 +74,14 @@ No hace falta tarjeta de credito para el plan free de Render.
 - El servicio se "duerme" si nadie lo visita en 15 minutos, y tarda unos
   30-50 segundos en despertar la primera vez que alguien entra despues de
   eso. Es normal, no esta roto.
-- Las apuestas se guardan en un archivo (SQLite) dentro del propio
-  servicio. Mientras no hagas un redeploy (no vuelvas a hacer `git push`),
-  quedan ahi tranquilas.
+- Las apuestas se guardan en una base de datos Postgres aparte (gratis,
+  se crea sola junto con el servicio via `render.yaml`) -- NO en un
+  archivo dentro del propio servicio web. Esto es importante: los Web
+  Services gratis de Render borran su filesystem local cada vez que se
+  "duermen" por inactividad, asi que si la app guardara los datos en un
+  archivo SQLite dentro de si misma, se perderian solos cada 15 minutos
+  de inactividad -- por eso usamos Postgres, que es un servicio aparte y
+  no se borra.
 
 ## Flujo recomendado para el dia del evento
 
