@@ -146,5 +146,5 @@ CUOTAS_GRUPOS: dict[str, int] = {
 
 # Secuencia de rondas y cuantas avanzan en cada una (todas menos "groups",
 # que usa CUOTAS_GRUPOS por continente en vez de un numero unico).
-ORDEN_RONDAS: list[str] = ["groups", "top30", "top10", "top5", "top3", "done"]
-CUPO_RONDA: dict[str, int] = {"top30": 10, "top10": 5, "top5": 3, "top3": 1}
+ORDEN_RONDAS: list[str] = ["groups", "top30", "top12", "top5", "top2", "done"]
+CUPO_RONDA: dict[str, int] = {"top30": 12, "top12": 5, "top5": 2, "top2": 1}

@@ -37,8 +37,9 @@ def cerrar_ronda_y_avanzar() -> str:
         ganadoras_ids = [c["id"] for c in filas[:cupo]]
         perdedoras_ids = [c["id"] for c in filas[cupo:]]
 
-    # Cuando el top3 elige una sola ganadora, esa es LA ganadora final.
-    etapa_destino = "ganadora" if ronda == "top3" else etapa_siguiente
+    # Cuando esta ronda era la ultima antes de "done", su ganadora es LA
+    # ganadora final (no importa como se llame la ronda).
+    etapa_destino = "ganadora" if etapa_siguiente == "done" else etapa_siguiente
     db.actualizar_etapas(ganadoras_ids, perdedoras_ids, etapa_destino)
     db.set_ronda_actual(etapa_siguiente)
     return etapa_siguiente
@@ -58,8 +59,8 @@ def cupo_por_continente(continente: str) -> int:
 NOMBRES_RONDA = {
     "groups": "Fase de grupos (por continente)",
     "top30": "Top 30",
-    "top10": "Top 10",
+    "top12": "Top 12",
     "top5": "Top 5",
-    "top3": "Top 3",
+    "top2": "Top 2",
     "done": "\U0001f451 Tenemos ganadora",
 }

@@ -41,7 +41,7 @@ CUOTAS_GRUPOS = {
     "Africa": 5, "Asia": 7, "Europa": 8,
     "America del Norte y Caribe": 7, "America del Sur": 2, "Oceania": 1,
 }
-CUPO_RONDA = {"top30": 10, "top10": 5, "top5": 3, "top3": 1}
+CUPO_RONDA = {"top30": 12, "top12": 5, "top5": 2, "top2": 1}
 
 
 def elegir_ids(ronda, filas):
@@ -71,7 +71,7 @@ def avanzar():
     assert r.status == 200
 
 
-rondas = ["groups", "top30", "top10", "top5", "top3"]
+rondas = ["groups", "top30", "top12", "top5", "top2"]
 for ronda in rondas:
     r = get("/")
     print(f"GET / -> {r.status}")
