@@ -3,10 +3,13 @@ servidor corriendo en localhost. No es parte de la app, es solo para QA
 rapida durante el desarrollo. Borrar o ignorar en produccion.
 """
 import sqlite3
+import sys
 import urllib.parse
 import urllib.request
 import http.cookiejar
-import sys
+
+sys.path.insert(0, ".")
+from app.data import CUOTAS_GRUPOS, CUPO_RONDA  # noqa: E402 (reusa la fuente de verdad)
 
 BASE = "http://127.0.0.1:8123"
 ADMIN_KEY = "test123"
@@ -35,13 +38,6 @@ def candidatos_para_votar(ronda):
     ).fetchall()
     conn.close()
     return filas
-
-
-CUOTAS_GRUPOS = {
-    "Africa": 5, "Asia": 7, "Europa": 8,
-    "America del Norte y Caribe": 7, "America del Sur": 2, "Oceania": 1,
-}
-CUPO_RONDA = {"top30": 12, "top12": 5, "top5": 2, "top2": 1}
 
 
 def elegir_ids(ronda, filas):

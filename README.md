@@ -1,7 +1,7 @@
 # Quiniela Miss Universo
 
 Jueguito para votar entre amigos por WhatsApp: quien avanza de la fase de
-grupos (por continente) al Top 30, despues al Top 10, Top 5, Top 3 y
+grupos (por continente) al Top 30, despues al Top 12, Top 5, Top 2 y
 finalmente la ganadora.
 
 No tiene nada que ver con el resultado real del concurso -- es solo para
@@ -16,7 +16,7 @@ divertirse con el grupo.
 - Vos (el admin) tenes un link secreto `/admin?key=...` donde ves los votos
   en vivo y apretas un boton para cerrar la ronda actual y pasar a la
   siguiente. Las candidatas mas votadas de cada ronda avanzan solas.
-- Rondas: grupos (por continente) -> Top 30 -> Top 10 -> Top 5 -> Top 3 ->
+- Rondas: grupos (por continente) -> Top 30 -> Top 12 -> Top 5 -> Top 2 ->
   ganadora.
 
 ## Correrlo en tu compu (para probar)
@@ -88,7 +88,7 @@ app/
   main.py        rutas de FastAPI (/, /vote, /admin, /admin/advance, /admin/reset)
   db.py          acceso a SQLite (sin ORM, es chiquito)
   logic.py       calculo de quien avanza en cada ronda
-  data.py        lista de candidatas 2025 + cuotas por continente/ronda
+  data.py        lista de candidatas Miss Universe 2026 + cuotas por continente/ronda
   templates/     HTML con Jinja2 + Tailwind (via CDN)
 scripts/
   smoke_test*.py pruebas manuales de punta a punta (no se usan en produccion)

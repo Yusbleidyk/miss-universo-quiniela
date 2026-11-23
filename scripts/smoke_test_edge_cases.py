@@ -1,10 +1,14 @@
 """Smoke test de casos limite: reset, voto invalido, voto doble. No es
 parte de la app, solo QA manual durante desarrollo."""
 import sqlite3
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 import http.cookiejar
+
+sys.path.insert(0, ".")
+from app.data import CUOTAS_GRUPOS  # noqa: E402 (reusa la fuente de verdad)
 
 BASE = "http://127.0.0.1:8123"
 ADMIN_KEY = "test123"
@@ -51,13 +55,11 @@ conn = sqlite3.connect(DB_PATH)
 conn.row_factory = sqlite3.Row
 filas = conn.execute("SELECT id, continente FROM candidatas WHERE etapa='groups'").fetchall()
 conn.close()
-cuotas = {"Africa": 5, "Asia": 7, "Europa": 8, "America del Norte y Caribe": 7,
-          "America del Sur": 2, "Oceania": 1}
 por_cont = {}
 for f in filas:
     por_cont.setdefault(f["continente"], []).append(f["id"])
 ids = []
-for cont, cupo in cuotas.items():
+for cont, cupo in CUOTAS_GRUPOS.items():
     ids += por_cont.get(cont, [])[:cupo]
 r = post_form(opener, "/vote", [("candidata", i) for i in ids])
 print("   status:", r.status)
