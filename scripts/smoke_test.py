@@ -9,7 +9,7 @@ import urllib.request
 import http.cookiejar
 
 sys.path.insert(0, ".")
-from app.data import CUOTAS_GRUPOS, CUPO_RONDA  # noqa: E402 (reusa la fuente de verdad)
+from app.data import CUPO_RONDA  # noqa: E402 (reusa la fuente de verdad)
 
 BASE = "http://127.0.0.1:8123"
 ADMIN_KEY = "test123"
@@ -34,21 +34,13 @@ def candidatos_para_votar(ronda):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     filas = conn.execute(
-        "SELECT id, continente FROM candidatas WHERE etapa = ?", (ronda,)
+        "SELECT id FROM candidatas WHERE etapa = ?", (ronda,)
     ).fetchall()
     conn.close()
     return filas
 
 
 def elegir_ids(ronda, filas):
-    if ronda == "groups":
-        por_cont = {}
-        for f in filas:
-            por_cont.setdefault(f["continente"], []).append(f["id"])
-        ids = []
-        for cont, cupo in CUOTAS_GRUPOS.items():
-            ids += por_cont.get(cont, [])[:cupo]
-        return ids
     cupo = CUPO_RONDA[ronda]
     return [f["id"] for f in filas][:cupo]
 

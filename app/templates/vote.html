@@ -23,74 +23,54 @@
 </div>
 {% endif %}
 
+<div class="bg-white rounded-xl shadow p-3 mb-4 sticky top-0 z-10 flex items-center justify-between">
+  <span class="text-sm text-slate-600">
+    Elegí exactamente <strong>{{ cupo_total }}</strong> candidatas.
+  </span>
+  <span id="contador" class="text-sm font-bold text-fuchsia-700">0 / {{ cupo_total }}</span>
+</div>
+
 <form method="post" action="/vote" id="vote-form">
-  {% if grupos %}
-    <p class="text-sm text-slate-600 mb-4">
-      Elegí exactamente la cantidad pedida en cada continente para armar el Top 30.
-    </p>
-    {% for continente, candidatas in grupos.items() %}
-    <fieldset class="bg-white rounded-xl shadow p-4 mb-4" data-group="{{ continente }}" data-cupo="{{ cuotas_grupos[continente] }}">
-      <legend class="font-bold text-fuchsia-700 mb-2">
-        {{ continente }}
-        <span class="text-xs font-normal text-slate-400 group-counter">(elegí {{ cuotas_grupos[continente] }})</span>
-      </legend>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {% for c in candidatas %}
+  <div class="bg-white rounded-xl shadow p-4 mb-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {% set continente_anterior = namespace(valor=None) %}
+      {% for c in candidatas %}
+        {% if mostrar_continentes and c.continente != continente_anterior.valor %}
+          {% set continente_anterior.valor = c.continente %}
+          <h3 class="col-span-1 sm:col-span-2 font-bold text-fuchsia-700 mt-3 first:mt-0">
+            {{ c.continente }}
+          </h3>
+        {% endif %}
         <label class="flex items-center gap-2 bg-fuchsia-50 hover:bg-fuchsia-100 rounded-lg px-3 py-2 cursor-pointer text-sm">
-          <input type="checkbox" name="candidata" value="{{ c.id }}" class="group-checkbox accent-fuchsia-600">
+          <input type="checkbox" name="candidata" value="{{ c.id }}" class="candidata-checkbox accent-fuchsia-600">
           <span><strong>{{ c.pais }}</strong> - {{ c.nombre }}</span>
         </label>
-        {% endfor %}
-      </div>
-    </fieldset>
-    {% endfor %}
-  {% else %}
-    <p class="text-sm text-slate-600 mb-4">
-      Elegí exactamente {{ cupo_total }} candidatas para que avancen a la siguiente ronda.
-    </p>
-    <fieldset class="bg-white rounded-xl shadow p-4 mb-4" data-group="unico" data-cupo="{{ cupo_total }}">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {% for c in candidatas %}
-        <label class="flex items-center gap-2 bg-fuchsia-50 hover:bg-fuchsia-100 rounded-lg px-3 py-2 cursor-pointer text-sm">
-          <input type="checkbox" name="candidata" value="{{ c.id }}" class="group-checkbox accent-fuchsia-600">
-          <span><strong>{{ c.pais }}</strong> - {{ c.nombre }}</span>
-        </label>
-        {% endfor %}
-      </div>
-    </fieldset>
-  {% endif %}
+      {% endfor %}
+    </div>
+  </div>
 
   <button type="submit" id="submit-btn" disabled
-    class="w-full bg-fuchsia-600 disabled:bg-slate-300 text-white font-bold py-3 rounded-xl shadow">
+    class="w-full bg-fuchsia-600 disabled:bg-slate-300 text-white font-bold py-3 rounded-xl shadow sticky bottom-4">
     Enviar mi quiniela
   </button>
 </form>
 
 <script>
-  const fieldsets = Array.from(document.querySelectorAll('fieldset[data-group]'));
+  const checkboxes = Array.from(document.querySelectorAll('.candidata-checkbox'));
   const submitBtn = document.getElementById('submit-btn');
+  const contador = document.getElementById('contador');
+  const cupo = {{ cupo_total }};
 
   function actualizarEstado() {
-    let todoCompleto = true;
-    fieldsets.forEach((fs) => {
-      const cupo = parseInt(fs.dataset.cupo, 10);
-      const checks = Array.from(fs.querySelectorAll('.group-checkbox'));
-      const marcados = checks.filter((c) => c.checked);
-      checks.forEach((c) => {
-        c.disabled = !c.checked && marcados.length >= cupo;
-      });
-      const label = fs.querySelector('.group-counter');
-      if (label) {
-        label.textContent = `(elegiste ${marcados.length} de ${cupo})`;
-      }
-      if (marcados.length !== cupo) todoCompleto = false;
+    const marcados = checkboxes.filter((c) => c.checked);
+    checkboxes.forEach((c) => {
+      c.disabled = !c.checked && marcados.length >= cupo;
     });
-    submitBtn.disabled = !todoCompleto;
+    contador.textContent = `${marcados.length} / ${cupo}`;
+    submitBtn.disabled = marcados.length !== cupo;
   }
 
-  fieldsets.forEach((fs) => {
-    fs.addEventListener('change', actualizarEstado);
-  });
+  checkboxes.forEach((c) => c.addEventListener('change', actualizarEstado));
   actualizarEstado();
 </script>
 

@@ -132,21 +132,15 @@ CANDIDATAS: list[tuple[str, str, str]] = [
     ("Nueva Zelanda", "Georgia Waddington", "Oceania"),
 ]
 
-# Cuantas candidatas avanzan de cada grupo (continente) al Top 30.
-# Proporcional al tamano de cada grupo, suma exacta = 30.
-CUOTAS_GRUPOS: dict[str, int] = {
-    "Africa": 5,
-    "Asia": 5,
-    "Europa": 9,
-    "America del Norte y Caribe": 7,
-    "America del Sur": 3,
-    "Oceania": 1,
-}
-
-# Secuencia de rondas y cuantas avanzan en cada una (todas menos "groups",
-# que usa CUOTAS_GRUPOS por continente en vez de un numero unico). Calca el
-# formato oficial de la noche final de Miss Universe (edicion 2025, la mas
-# reciente confirmada): Top30 -> Top12 (traje de bano) -> Top5 (vestido de
-# noche) -> Top3 (preguntas) -> ganadora (pregunta final).
+# Secuencia de rondas y cuantas avanzan en cada una. Calca el formato
+# oficial de Miss Universe (edicion 2025, la mas reciente confirmada):
+# preliminar -> Top 30 -> Top 12 (traje de bano) -> Top 5 (vestido de
+# noche) -> Top 3 (preguntas) -> ganadora (pregunta final).
+#
+# IMPORTANTE: el concurso real NO reparte cupos por continente para armar
+# el Top 30 -- es puro puntaje de la competencia preliminar entre todas las
+# candidatas juntas. Por eso "groups" tiene un cupo unico (30), igual que
+# el resto de las rondas; el campo "continente" en CANDIDATAS es solo
+# informativo/visual, no se usa para calcular cupos.
 ORDEN_RONDAS: list[str] = ["groups", "top30", "top12", "top5", "top3", "done"]
-CUPO_RONDA: dict[str, int] = {"top30": 12, "top12": 5, "top5": 3, "top3": 1}
+CUPO_RONDA: dict[str, int] = {"groups": 30, "top30": 12, "top12": 5, "top5": 3, "top3": 1}

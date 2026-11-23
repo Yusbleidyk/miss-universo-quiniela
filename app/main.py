@@ -2,14 +2,12 @@
 import os
 import secrets
 import uuid
-from collections import defaultdict
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app import db, logic
-from app.data import CUOTAS_GRUPOS
 
 APP_DIR = os.path.dirname(__file__)
 ADMIN_KEY = (os.environ.get("ADMIN_KEY") or secrets.token_urlsafe(8)).strip()
@@ -31,6 +29,27 @@ def get_votante_id(request: Request) -> str:
     return request.cookies.get("vid") or str(uuid.uuid4())
 
 
+def _contexto_voto(ronda: str, ya_voto: bool, error: str | None = None) -> dict:
+    """Arma el contexto comun para la pantalla de votacion de cualquier ronda.
+
+    Todas las rondas (incluida "groups") son una lista plana con un cupo
+    unico -- el concurso real tampoco reparte el Top 30 por continente, asi
+    que no hace falta logica especial para esa ronda. La lista ya viene
+    ordenada por continente/pais desde la base, asi que en "groups" se
+    pueden mostrar subtitulos de continente solo a modo visual/organizativo.
+    """
+    return {
+        "ronda": ronda,
+        "nombre_ronda": logic.NOMBRES_RONDA[ronda],
+        "ya_voto": ya_voto,
+        "candidatas": db.candidatas_en_etapa(ronda),
+        "mostrar_continentes": ronda == "groups",
+        "cupo_total": logic.cupo_total(ronda),
+        "votantes": db.contar_votantes_unicos(ronda),
+        "error": error,
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     ronda = db.get_ronda_actual()
@@ -45,29 +64,7 @@ def home(request: Request):
         return resp
 
     ya_voto = db.ya_voto(ronda, votante_id)
-    candidatas = db.candidatas_en_etapa(ronda)
-
-    grupos = None
-    if ronda == "groups":
-        grupos = defaultdict(list)
-        for c in candidatas:
-            grupos[c["continente"]].append(c)
-        grupos = dict(sorted(grupos.items()))
-
-    resp = templates.TemplateResponse(
-        request,
-        "vote.html",
-        {
-            "ronda": ronda,
-            "nombre_ronda": logic.NOMBRES_RONDA[ronda],
-            "ya_voto": ya_voto,
-            "candidatas": candidatas,
-            "grupos": grupos,
-            "cuotas_grupos": CUOTAS_GRUPOS,
-            "cupo_total": logic.cupo_total(ronda),
-            "votantes": db.contar_votantes_unicos(ronda),
-        },
-    )
+    resp = templates.TemplateResponse(request, "vote.html", _contexto_voto(ronda, ya_voto))
     resp.set_cookie("vid", votante_id, max_age=60 * 60 * 24 * 60)
     return resp
 
@@ -85,28 +82,8 @@ async def vote(request: Request):
 
     error = _validar_seleccion(ronda, seleccionadas)
     if error:
-        candidatas = db.candidatas_en_etapa(ronda)
-        grupos = None
-        if ronda == "groups":
-            grupos = defaultdict(list)
-            for c in candidatas:
-                grupos[c["continente"]].append(c)
-            grupos = dict(sorted(grupos.items()))
         return templates.TemplateResponse(
-            request,
-            "vote.html",
-            {
-                "ronda": ronda,
-                "nombre_ronda": logic.NOMBRES_RONDA[ronda],
-                "ya_voto": False,
-                "candidatas": candidatas,
-                "grupos": grupos,
-                "cuotas_grupos": CUOTAS_GRUPOS,
-                "cupo_total": logic.cupo_total(ronda),
-                "votantes": db.contar_votantes_unicos(ronda),
-                "error": error,
-            },
-            status_code=400,
+            request, "vote.html", _contexto_voto(ronda, False, error), status_code=400
         )
 
     db.registrar_votos(ronda, votante_id, seleccionadas)
@@ -117,23 +94,13 @@ async def vote(request: Request):
 
 def _validar_seleccion(ronda: str, seleccionadas: list[int]) -> str | None:
     """Valida que se haya elegido exactamente el cupo correcto. None = OK."""
-    candidatas = {c["id"]: c for c in db.candidatas_en_etapa(ronda)}
-    for cid in seleccionadas:
-        if cid not in candidatas:
-            return "Che, alguna seleccion no es valida. Probá de nuevo."
-
-    if ronda == "groups":
-        por_continente = defaultdict(int)
-        for cid in seleccionadas:
-            por_continente[candidatas[cid]["continente"]] += 1
-        for continente, cupo in CUOTAS_GRUPOS.items():
-            if por_continente.get(continente, 0) != cupo:
-                return f"En {continente} tenés que elegir exactamente {cupo}."
-        return None
+    ids_validos = {c["id"] for c in db.candidatas_en_etapa(ronda)}
+    if any(cid not in ids_validos for cid in seleccionadas):
+        return "Che, alguna seleccion no es valida. Probá de nuevo."
 
     cupo = logic.cupo_total(ronda)
     if len(seleccionadas) != cupo:
-        return f"Tenés que elegir exactamente {cupo} candidatas."
+        return f"Tenés que elegir exactamente {cupo} candidatas (elegiste {len(seleccionadas)})."
     return None
 
 

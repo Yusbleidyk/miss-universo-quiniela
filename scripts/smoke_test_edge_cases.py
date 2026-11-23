@@ -8,7 +8,7 @@ import urllib.request
 import http.cookiejar
 
 sys.path.insert(0, ".")
-from app.data import CUOTAS_GRUPOS  # noqa: E402 (reusa la fuente de verdad)
+from app.data import CUPO_RONDA  # noqa: E402 (reusa la fuente de verdad)
 
 BASE = "http://127.0.0.1:8123"
 ADMIN_KEY = "test123"
@@ -53,14 +53,9 @@ except urllib.error.HTTPError as e:
 print("3) Votar bien (30 justas)...")
 conn = sqlite3.connect(DB_PATH)
 conn.row_factory = sqlite3.Row
-filas = conn.execute("SELECT id, continente FROM candidatas WHERE etapa='groups'").fetchall()
+filas = conn.execute("SELECT id FROM candidatas WHERE etapa='groups'").fetchall()
 conn.close()
-por_cont = {}
-for f in filas:
-    por_cont.setdefault(f["continente"], []).append(f["id"])
-ids = []
-for cont, cupo in CUOTAS_GRUPOS.items():
-    ids += por_cont.get(cont, [])[:cupo]
+ids = [f["id"] for f in filas][:CUPO_RONDA["groups"]]
 r = post_form(opener, "/vote", [("candidata", i) for i in ids])
 print("   status:", r.status)
 assert r.status == 200

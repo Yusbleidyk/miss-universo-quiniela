@@ -1,11 +1,17 @@
 # Quiniela Miss Universo
 
-Jueguito para votar entre amigos por WhatsApp: quien avanza de la fase de
-grupos (por continente) al Top 30, despues al Top 12, Top 5, Top 3 y
-finalmente la ganadora -- calca el formato oficial de la noche final real
-de Miss Universe (edicion 2025, la mas reciente confirmada): Top 30 ->
-Top 12 (traje de bano) -> Top 5 (vestido de noche) -> Top 3 (preguntas) ->
-ganadora (pregunta final).
+Jueguito para votar entre amigos por WhatsApp: quien pasa de la preliminar
+(elegis 30 de las 116 candidatas) al Top 30, despues al Top 12, Top 5,
+Top 3 y finalmente la ganadora -- calca el formato oficial de la noche
+final real de Miss Universe (edicion 2025, la mas reciente confirmada):
+Top 30 -> Top 12 (traje de bano) -> Top 5 (vestido de noche) -> Top 3
+(preguntas) -> ganadora (pregunta final).
+
+Ojo: el concurso real NO reparte el Top 30 por continente, es puro puntaje
+de la competencia preliminar entre todas las candidatas juntas -- por eso
+la quiniela tampoco lo hace. El campo "continente" solo se usa para
+organizar visualmente la lista larga de 116 candidatas (subtitulos), no
+para exigir cuotas por region.
 
 No tiene nada que ver con el resultado real del concurso -- es solo para
 divertirse con el grupo.
@@ -19,8 +25,8 @@ divertirse con el grupo.
 - Vos (el admin) tenes un link secreto `/admin?key=...` donde ves los votos
   en vivo y apretas un boton para cerrar la ronda actual y pasar a la
   siguiente. Las candidatas mas votadas de cada ronda avanzan solas.
-- Rondas: grupos (por continente) -> Top 30 -> Top 12 -> Top 5 -> Top 3 ->
-  ganadora.
+- Rondas: preliminar (elegis 30 de 116) -> Top 30 -> Top 12 -> Top 5 ->
+  Top 3 -> ganadora.
 
 ## Correrlo en tu compu (para probar)
 
