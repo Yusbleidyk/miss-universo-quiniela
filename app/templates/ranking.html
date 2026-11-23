@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Ranking - Quiniela Miss Universo{% endblock %}
+{% block content %}
+
+<div class="bg-white rounded-xl shadow p-4 mb-4">
+  <h2 class="text-lg font-bold text-fuchsia-700">Ranking</h2>
+  {% if not hay_resultado %}
+  <p class="text-sm text-slate-500 mt-1">
+    Todavía no se cargó el resultado real del concurso, asi que por ahora
+    todos estan en 0. Volvé a entrar despues de la final para ver quien le
+    pegó mas.
+  </p>
+  {% else %}
+  <p class="text-sm text-slate-500 mt-1">
+    1 punto por cada acierto en Top 30 / Top 12 / Top 5 / Top 3, mas 10
+    puntos extra si le pegaste a la ganadora exacta.
+  </p>
+  {% endif %}
+</div>
+
+{% if not tabla %}
+<div class="bg-white rounded-xl shadow p-6 text-center text-slate-500">
+  Todavía nadie cargó su apuesta.
+</div>
+{% else %}
+<div class="bg-white rounded-xl shadow overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-fuchsia-50 text-fuchsia-700">
+      <tr>
+        <th class="text-left px-4 py-2">#</th>
+        <th class="text-left px-4 py-2">Nombre</th>
+        <th class="text-right px-4 py-2">Top30</th>
+        <th class="text-right px-4 py-2">Top12</th>
+        <th class="text-right px-4 py-2">Top5</th>
+        <th class="text-right px-4 py-2">Top3</th>
+        <th class="text-center px-4 py-2">Ganadora</th>
+        <th class="text-right px-4 py-2 font-bold">Puntos</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for fila in tabla %}
+      <tr class="border-t border-slate-100 {{ 'bg-amber-50' if loop.index == 1 else '' }}">
+        <td class="px-4 py-2 text-slate-400">{{ loop.index }}</td>
+        <td class="px-4 py-2 font-semibold">{{ fila.nombre }}</td>
+        <td class="px-4 py-2 text-right">{{ fila.aciertos.top30 }}</td>
+        <td class="px-4 py-2 text-right">{{ fila.aciertos.top12 }}</td>
+        <td class="px-4 py-2 text-right">{{ fila.aciertos.top5 }}</td>
+        <td class="px-4 py-2 text-right">{{ fila.aciertos.top3 }}</td>
+        <td class="px-4 py-2 text-center">{{ "si" if fila.acerto_ganadora else "-" }}</td>
+        <td class="px-4 py-2 text-right font-bold text-fuchsia-700">{{ fila.score }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<a href="/" class="inline-block mt-6 text-fuchsia-600 font-semibold text-sm">&larr; Volver a mi apuesta</a>
+
+{% endblock %}

@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Cargar resultado real' if es_admin else 'Armá tu apuesta' }} - Quiniela Miss Universo{% endblock %}
+{% block content %}
+
+<div class="bg-white rounded-xl shadow p-4 mb-4">
+  <h2 class="text-lg font-bold text-fuchsia-700">
+    {{ 'Cargar el resultado REAL del concurso' if es_admin else 'Armá tu apuesta' }}
+  </h2>
+  <p class="text-sm text-slate-500">
+    {% if es_admin %}
+      Elegí la verdad oficial: Top 30 -> Top 12 -> Top 5 -> Top 3 -> ganadora.
+    {% else %}
+      Elegí tu Top 30, de ahí tu Top 12, de ahí tu Top 5, de ahí tu Top 3 y
+      por ultimo tu ganadora. Podés volver a entrar a este mismo link y
+      editarla mientras las apuestas sigan abiertas.
+    {% endif %}
+  </p>
+  <p id="progreso" class="text-xs text-fuchsia-500 font-semibold mt-2"></p>
+</div>
+
+{% if error %}
+<div class="bg-rose-50 border border-rose-200 rounded-xl p-4 mb-4 text-rose-700 text-sm">
+  {{ error }}
+</div>
+{% endif %}
+
+<form method="post" action="{{ '/admin/resultado' if es_admin else '/apostar' }}" id="form-apuesta">
+  {% if es_admin %}<input type="hidden" name="key" value="{{ admin_key }}">{% endif %}
+
+  {% if not es_admin %}
+  <div class="paso bg-white rounded-xl shadow p-4 mb-4" data-paso="nombre">
+    <label class="block text-sm font-semibold text-slate-700 mb-2">¿Cómo te llamás?</label>
+    <input type="text" name="nombre" id="input-nombre" required maxlength="40"
+      value="{{ nombre_previo }}" placeholder="Tu nombre para el ranking"
+      class="w-full border border-slate-300 rounded-lg px-3 py-2">
+  </div>
+  {% endif %}
+
+  {% for nivel in ["top30", "top12", "top5", "top3"] %}
+  <div class="paso bg-white rounded-xl shadow p-4 mb-4" data-paso="{{ nivel }}" style="display:none">
+    <h3 class="font-bold text-fuchsia-700 mb-1">
+      {% if nivel == "top30" %}Elegí tu Top 30{% endif %}
+      {% if nivel == "top12" %}Elegí tu Top 12 (de tu propio Top 30){% endif %}
+      {% if nivel == "top5" %}Elegí tu Top 5 (de tu propio Top 12){% endif %}
+      {% if nivel == "top3" %}Elegí tu Top 3 (de tu propio Top 5){% endif %}
+    </h3>
+    <p class="text-xs text-slate-500 mb-2">
+      <span class="contador" data-nivel="{{ nivel }}">0 / {{ cupos[nivel] }}</span>
+    </p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 lista" data-nivel="{{ nivel }}"></div>
+  </div>
+  {% endfor %}
+
+  <div class="paso bg-white rounded-xl shadow p-4 mb-4" data-paso="ganadora" style="display:none">
+    <h3 class="font-bold text-fuchsia-700 mb-1">¿Quién es tu ganadora?</h3>
+    <p class="text-xs text-slate-500 mb-2">Una de tu propio Top 3.</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 lista" data-nivel="ganadora"></div>
+  </div>
+
+  <div class="flex gap-2 sticky bottom-4">
+    <button type="button" id="btn-atras"
+      class="flex-1 bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl shadow">
+      Atrás
+    </button>
+    <button type="button" id="btn-siguiente" disabled
+      class="flex-1 bg-fuchsia-600 disabled:bg-slate-300 text-white font-bold py-3 rounded-xl shadow">
+      Siguiente
+    </button>
+    <button type="submit" id="btn-enviar" disabled style="display:none"
+      class="flex-1 bg-emerald-600 disabled:bg-slate-300 text-white font-bold py-3 rounded-xl shadow">
+      {{ 'Guardar resultado real' if es_admin else 'Enviar mi apuesta' }}
+    </button>
+  </div>
+</form>
+
+<script id="data-candidatas" type="application/json">{{ candidatas_json | safe }}</script>
+<script id="data-niveles" type="application/json">{{ niveles_json | safe }}</script>
+<script id="data-cupos" type="application/json">{{ cupos_json | safe }}</script>
+<script id="data-origen" type="application/json">{{ origen_json | safe }}</script>
+<script id="data-previos" type="application/json">{{ picks_previos_json | safe }}</script>
+
+<script>
+  const ES_ADMIN = {{ "true" if es_admin else "false" }};
+  const CANDIDATAS = JSON.parse(document.getElementById('data-candidatas').textContent);
+  const NIVELES = JSON.parse(document.getElementById('data-niveles').textContent);
+  const CUPOS = JSON.parse(document.getElementById('data-cupos').textContent);
+  const ORIGEN = JSON.parse(document.getElementById('data-origen').textContent);
+  const previos = JSON.parse(document.getElementById('data-previos').textContent);
+  const GANADORA_PREVIA = {{ ganadora_previa }};
+
+  const porId = {};
+  CANDIDATAS.forEach((c) => { porId[c.id] = c; });
+
+  const seleccion = {};
+  NIVELES.forEach((n) => { seleccion[n] = (previos[n] || []).slice(); });
+  seleccion.ganadora = GANADORA_PREVIA || null;
+
+  const PASOS = ES_ADMIN ? [...NIVELES, 'ganadora'] : ['nombre', ...NIVELES, 'ganadora'];
+  let pasoActual = 0;
+
+  const btnAtras = document.getElementById('btn-atras');
+  const btnSiguiente = document.getElementById('btn-siguiente');
+  const btnEnviar = document.getElementById('btn-enviar');
+  const progreso = document.getElementById('progreso');
+
+  function divDePaso(paso) {
+    return document.querySelector(`.paso[data-paso="${paso}"]`);
+  }
+
+  function renderLista(nivel, candidatasDisponibles, tipoInput) {
+    const contenedor = document.querySelector(`.lista[data-nivel="${nivel}"]`);
+    contenedor.innerHTML = '';
+    let continenteAnterior = null;
+    candidatasDisponibles.forEach((c) => {
+      if (nivel === 'top30' && c.continente !== continenteAnterior) {
+        continenteAnterior = c.continente;
+        const h = document.createElement('h4');
+        h.className = 'col-span-1 sm:col-span-2 font-bold text-fuchsia-700 mt-2 first:mt-0';
+        h.textContent = c.continente;
+        contenedor.appendChild(h);
+      }
+      const marcado = tipoInput === 'radio'
+        ? seleccion.ganadora === c.id
+        : seleccion[nivel].includes(c.id);
+      const label = document.createElement('label');
+      label.className = 'flex items-center gap-2 bg-fuchsia-50 hover:bg-fuchsia-100 rounded-lg px-3 py-2 cursor-pointer text-sm';
+      label.innerHTML = `
+        <input type="${tipoInput}" name="${nivel === 'ganadora' ? 'ganadora' : nivel}"
+          value="${c.id}" class="entrada-${nivel} accent-fuchsia-600" ${marcado ? 'checked' : ''}>
+        <span><strong>${c.pais}</strong> - ${c.nombre}</span>
+      `;
+      contenedor.appendChild(label);
+    });
+    if (tipoInput === 'checkbox') {
+      actualizarContadorYLimite(nivel);
+      contenedor.addEventListener('change', () => actualizarContadorYLimite(nivel));
+    } else {
+      contenedor.addEventListener('change', () => actualizarBotonSiguiente());
+    }
+  }
+
+  function actualizarContadorYLimite(nivel) {
+    const cupo = CUPOS[nivel];
+    const inputs = Array.from(document.querySelectorAll(`.entrada-${nivel}`));
+    const marcados = inputs.filter((i) => i.checked);
+    inputs.forEach((i) => { i.disabled = !i.checked && marcados.length >= cupo; });
+    const contador = document.querySelector(`.contador[data-nivel="${nivel}"]`);
+    if (contador) contador.textContent = `${marcados.length} / ${cupo}`;
+    actualizarBotonSiguiente();
+  }
+
+  function actualizarBotonSiguiente() {
+    const paso = PASOS[pasoActual];
+    let listo = false;
+    if (paso === 'nombre') {
+      listo = document.getElementById('input-nombre').value.trim().length > 0;
+    } else if (paso === 'ganadora') {
+      listo = Array.from(document.querySelectorAll('.entrada-ganadora')).some((i) => i.checked);
+    } else {
+      const marcados = document.querySelectorAll(`.entrada-${paso}:checked`).length;
+      listo = marcados === CUPOS[paso];
+    }
+    if (pasoActual === PASOS.length - 1) {
+      btnEnviar.disabled = !listo;
+    } else {
+      btnSiguiente.disabled = !listo;
+    }
+  }
+
+  function leerSeleccion(nivel) {
+    return Array.from(document.querySelectorAll(`.entrada-${nivel}:checked`)).map((i) => parseInt(i.value, 10));
+  }
+
+  function mostrarPaso(indice) {
+    PASOS.forEach((p) => { divDePaso(p).style.display = 'none'; });
+    divDePaso(PASOS[indice]).style.display = '';
+    btnAtras.style.display = indice === 0 ? 'none' : '';
+    const esUltimo = indice === PASOS.length - 1;
+    btnSiguiente.style.display = esUltimo ? 'none' : '';
+    btnEnviar.style.display = esUltimo ? '' : 'none';
+    progreso.textContent = `Paso ${indice + 1} de ${PASOS.length}`;
+    actualizarBotonSiguiente();
+  }
+
+  btnSiguiente.addEventListener('click', () => {
+    const paso = PASOS[pasoActual];
+    if (paso !== 'nombre') {
+      seleccion[paso] = leerSeleccion(paso);
+    }
+    pasoActual += 1;
+    const siguiente = PASOS[pasoActual];
+    if (siguiente === 'ganadora') {
+      const top3 = CANDIDATAS.filter((c) => seleccion.top3.includes(c.id));
+      renderLista('ganadora', top3, 'radio');
+    } else if (siguiente !== 'nombre') {
+      const origen = ORIGEN[siguiente];
+      const disponibles = origen
+        ? CANDIDATAS.filter((c) => seleccion[origen].includes(c.id))
+        : CANDIDATAS;
+      renderLista(siguiente, disponibles, 'checkbox');
+    }
+    mostrarPaso(pasoActual);
+  });
+
+  btnAtras.addEventListener('click', () => {
+    pasoActual -= 1;
+    mostrarPaso(pasoActual);
+  });
+
+  document.getElementById('input-nombre') && document.getElementById('input-nombre')
+    .addEventListener('input', actualizarBotonSiguiente);
+
+  btnEnviar.addEventListener('click', () => {
+    // Por las dudas, nunca dejar un input marcado-pero-deshabilitado afuera del envio.
+    document.querySelectorAll('input[disabled]').forEach((i) => { i.disabled = false; });
+  });
+
+  // Paso inicial: top30 (o nombre si no es admin) con lo que ya tenia guardado.
+  renderLista('top30', CANDIDATAS, 'checkbox');
+  mostrarPaso(0);
+</script>
+
+{% endblock %}

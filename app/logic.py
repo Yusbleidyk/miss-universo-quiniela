@@ -1,49 +1,75 @@
-"""Logica para cerrar una ronda y calcular quienes avanzan a la siguiente."""
+"""Validacion de apuestas y calculo de la tabla de posiciones."""
 from app import db
-from app.data import CUPO_RONDA, ORDEN_RONDAS
+from app.data import BONUS_GANADORA, CUPOS, NIVELES, ORIGEN
 
 
-def siguiente_ronda(ronda: str) -> str:
-    idx = ORDEN_RONDAS.index(ronda)
-    return ORDEN_RONDAS[idx + 1]
-
-
-def cerrar_ronda_y_avanzar() -> str:
-    """Cierra la ronda actual, promueve a las mas votadas y devuelve la ronda nueva.
-
-    Todas las rondas (incluida "groups") usan el mismo criterio: las
-    `CUPO_RONDA[ronda]` candidatas con mas votos avanzan, el resto queda
-    eliminada. El concurso real tampoco reparte cupos por continente para
-    el Top 30 -- es puro puntaje entre todas juntas.
+def validar_apuesta(picks_por_nivel: dict[str, list[int]], ganadora_id: int | None) -> str | None:
+    """Valida cupos exactos, anidacion (cada nivel sale del anterior) y que la
+    ganadora elegida este dentro del Top 3 propio. Devuelve un mensaje de
+    error, o None si esta todo bien.
     """
-    ronda = db.get_ronda_actual()
-    if ronda == "done":
-        return ronda  # ya terminamos, no hay nada para cerrar
+    ids_validos = {c["id"] for c in db.listar_candidatas()}
 
-    etapa_siguiente = siguiente_ronda(ronda)
-    filas = db.tally_ronda(ronda)
-    cupo = CUPO_RONDA[ronda]
-    ganadoras_ids = [c["id"] for c in filas[:cupo]]
-    perdedoras_ids = [c["id"] for c in filas[cupo:]]
+    for nivel in NIVELES:
+        elegidas = picks_por_nivel.get(nivel, [])
+        cupo = CUPOS[nivel]
 
-    # Cuando esta ronda era la ultima antes de "done", su ganadora es LA
-    # ganadora final (no importa como se llame la ronda).
-    etapa_destino = "ganadora" if etapa_siguiente == "done" else etapa_siguiente
-    db.actualizar_etapas(ganadoras_ids, perdedoras_ids, etapa_destino)
-    db.set_ronda_actual(etapa_siguiente)
-    return etapa_siguiente
+        if len(set(elegidas)) != len(elegidas):
+            return f"Elegiste una candidata repetida en {nivel}."
+        if len(elegidas) != cupo:
+            return f"Tenés que elegir exactamente {cupo} candidatas en {nivel} (elegiste {len(elegidas)})."
+        if any(cid not in ids_validos for cid in elegidas):
+            return "Che, alguna seleccion no es valida. Probá de nuevo."
+
+        origen = ORIGEN[nivel]
+        if origen is not None:
+            permitidas = set(picks_por_nivel.get(origen, []))
+            if not set(elegidas).issubset(permitidas):
+                return f"Las candidatas de {nivel} tienen que salir de tu propio {origen}."
+
+    if ganadora_id is None:
+        return "Tenés que elegir una ganadora."
+    if ganadora_id not in set(picks_por_nivel.get("top3", [])):
+        return "La ganadora tiene que ser una de las 3 que elegiste en el Top 3."
+
+    return None
 
 
-def cupo_total(ronda: str) -> int:
-    """Cupo total de candidatas que avanzan en esta ronda (para la UI)."""
-    return CUPO_RONDA.get(ronda, 0)
+def calcular_tabla_posiciones() -> list[dict]:
+    """Compara cada participante contra el resultado real y arma el ranking.
 
+    Si todavia no se cargo ningun resultado real, todos quedan en 0 (no es
+    un error, simplemente no hay nada contra que comparar todavia).
+    """
+    real = db.get_resultado_real()
+    picks_reales = db.obtener_picks(real["id"])
 
-NOMBRES_RONDA = {
-    "groups": "Preliminar - elegi el Top 30",
-    "top30": "Top 30 - Ronda de traje de bano",
-    "top12": "Top 12 - Ronda de vestido de noche",
-    "top5": "Top 5 - Ronda de preguntas",
-    "top3": "Top 3 - Pregunta final",
-    "done": "\U0001f451 Tenemos ganadora",
-}
+    tabla = []
+    for participante in db.listar_participantes():
+        picks_propios = db.obtener_picks(participante["id"])
+        aciertos_por_nivel = {}
+        score = 0
+        for nivel in NIVELES:
+            aciertos = len(set(picks_propios.get(nivel, [])) & set(picks_reales.get(nivel, [])))
+            aciertos_por_nivel[nivel] = aciertos
+            score += aciertos
+
+        acerto_ganadora = (
+            real["ganadora_id"] is not None
+            and participante["ganadora_id"] == real["ganadora_id"]
+        )
+        if acerto_ganadora:
+            score += BONUS_GANADORA
+
+        tabla.append(
+            {
+                "nombre": participante["nombre"],
+                "score": score,
+                "aciertos": aciertos_por_nivel,
+                "acerto_ganadora": acerto_ganadora,
+                "tiene_apuesta": any(picks_propios.get(n) for n in NIVELES),
+            }
+        )
+
+    tabla.sort(key=lambda fila: fila["score"], reverse=True)
+    return tabla

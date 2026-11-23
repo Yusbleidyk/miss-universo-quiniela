@@ -132,15 +132,18 @@ CANDIDATAS: list[tuple[str, str, str]] = [
     ("Nueva Zelanda", "Georgia Waddington", "Oceania"),
 ]
 
-# Secuencia de rondas y cuantas avanzan en cada una. Calca el formato
-# oficial de Miss Universe (edicion 2025, la mas reciente confirmada):
-# preliminar -> Top 30 -> Top 12 (traje de bano) -> Top 5 (vestido de
-# noche) -> Top 3 (preguntas) -> ganadora (pregunta final).
-#
-# IMPORTANTE: el concurso real NO reparte cupos por continente para armar
-# el Top 30 -- es puro puntaje de la competencia preliminar entre todas las
-# candidatas juntas. Por eso "groups" tiene un cupo unico (30), igual que
-# el resto de las rondas; el campo "continente" en CANDIDATAS es solo
-# informativo/visual, no se usa para calcular cupos.
-ORDEN_RONDAS: list[str] = ["groups", "top30", "top12", "top5", "top3", "done"]
-CUPO_RONDA: dict[str, int] = {"groups": 30, "top30": 12, "top12": 5, "top5": 3, "top3": 1}
+# Niveles de la apuesta/pronostico, en orden, y cuantas candidatas se eligen
+# en cada uno. Calca el formato oficial de Miss Universe (edicion 2025, la
+# mas reciente confirmada): Top 30 -> Top 12 (traje de bano) -> Top 5
+# (vestido de noche) -> Top 3 (preguntas) -> ganadora (pregunta final, se
+# guarda aparte como un solo id, no como un nivel mas de la lista).
+NIVELES: list[str] = ["top30", "top12", "top5", "top3"]
+CUPOS: dict[str, int] = {"top30": 30, "top12": 12, "top5": 5, "top3": 3}
+
+# De que nivel anterior tiene que salir cada eleccion (subconjunto). "top30"
+# no tiene origen: se elige directo de las 116 candidatas totales.
+ORIGEN: dict[str, str | None] = {"top30": None, "top12": "top30", "top5": "top12", "top3": "top5"}
+
+# Puntos extra si la ganadora elegida coincide exacto con la ganadora real.
+BONUS_GANADORA = 10
+

@@ -2,57 +2,52 @@
 {% block title %}Admin - Quiniela Miss Universo{% endblock %}
 {% block content %}
 
-<div class="bg-white rounded-xl shadow p-4 mb-6">
+<div class="bg-white rounded-xl shadow p-4 mb-4">
   <h2 class="text-lg font-bold text-fuchsia-700">Panel admin</h2>
-  <p class="text-sm text-slate-500">Ronda actual: <strong>{{ nombre_ronda }}</strong></p>
-  {% if ronda != "done" %}
-  <p class="text-sm text-slate-500">{{ votantes }} persona(s) votaron hasta ahora.</p>
-  {% endif %}
-</div>
-
-{% if ronda == "done" %}
-<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-  <p class="font-semibold text-emerald-700">
-    Ganadora: {{ ganadora.pais }} - {{ ganadora.nombre }}
+  <p class="text-sm text-slate-500">{{ cantidad_participantes }} persona(s) cargaron su apuesta.</p>
+  <p class="text-sm mt-1">
+    Estado de las apuestas:
+    <strong class="{{ 'text-rose-600' if cerradas else 'text-emerald-600' }}">
+      {{ 'CERRADAS' if cerradas else 'ABIERTAS' }}
+    </strong>
   </p>
 </div>
-{% else %}
 
-<div class="bg-white rounded-xl shadow p-4 mb-6">
-  <h3 class="font-bold text-slate-700 mb-3">Votos en vivo</h3>
-  {% set max_votos = tally[0].votos if tally else 1 %}
-  <div class="space-y-2">
-    {% for c in tally %}
-    <div>
-      <div class="flex justify-between text-xs text-slate-500">
-        <span><strong>{{ c.pais }}</strong> ({{ c.continente }})</span>
-        <span>{{ c.votos }} voto(s)</span>
-      </div>
-      <div class="w-full bg-slate-100 rounded h-3 overflow-hidden">
-        <div class="bg-fuchsia-500 h-3" style="width: {{ (c.votos / max_votos * 100) if max_votos else 0 }}%"></div>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</div>
-
-<form method="post" action="/admin/advance" class="mb-3">
+<form method="post" action="/admin/toggle-apuestas" class="mb-3">
   <input type="hidden" name="key" value="{{ key }}">
   <button type="submit"
-    class="w-full bg-fuchsia-600 text-white font-bold py-3 rounded-xl shadow"
-    onclick="return confirm('Seguro que querés cerrar esta ronda y pasar a la siguiente? No se puede deshacer.');">
-    Cerrar ronda y avanzar
+    class="w-full {{ 'bg-emerald-600' if cerradas else 'bg-rose-600' }} text-white font-bold py-3 rounded-xl shadow"
+    onclick="return confirm('{{ 'Volver a abrir las apuestas?' if cerradas else 'Cerrar las apuestas? Nadie va a poder cargar ni editar mas despues de esto.' }}');">
+    {{ 'Volver a abrir apuestas' if cerradas else 'Cerrar apuestas (antes de que arranque el show)' }}
   </button>
 </form>
 
+<a href="/admin/resultado?key={{ key }}"
+  class="block text-center bg-fuchsia-600 text-white font-bold py-3 rounded-xl shadow mb-3">
+  Cargar / editar el resultado real
+</a>
+
+<a href="/ranking" class="block text-center bg-white border border-fuchsia-200 text-fuchsia-700 font-semibold py-3 rounded-xl shadow mb-6">
+  Ver ranking
+</a>
+
+{% if participantes %}
+<div class="bg-white rounded-xl shadow p-4 mb-6">
+  <h3 class="font-bold text-slate-700 mb-2">Quien ya cargo su apuesta</h3>
+  <ul class="text-sm text-slate-600 space-y-1">
+    {% for p in participantes %}
+    <li>{{ p.nombre }}</li>
+    {% endfor %}
+  </ul>
+</div>
 {% endif %}
 
 <form method="post" action="/admin/reset">
   <input type="hidden" name="key" value="{{ key }}">
   <button type="submit"
     class="w-full bg-slate-200 text-slate-600 font-semibold py-2 rounded-xl"
-    onclick="return confirm('Esto borra TODOS los votos y vuelve a la ronda de grupos. Seguro?');">
-    Reiniciar todo (borra votos)
+    onclick="return confirm('Esto borra TODAS las apuestas y el resultado real. Seguro?');">
+    Reiniciar todo (borra apuestas)
   </button>
 </form>
 

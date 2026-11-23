@@ -1,11 +1,26 @@
-"""Capa de acceso a datos: SQLite con sqlite3 puro (sin ORM, no hace falta)."""
+"""Capa de acceso a datos: SQLite con sqlite3 puro (sin ORM, no hace falta).
+
+Modelo nuevo (quiniela de pronosticos, no votacion colectiva):
+- candidatas: el catalogo de las 116 candidatas (fijo).
+- participantes: cada persona que arma su apuesta. Se identifica por una
+  cookie (cookie_token). Una fila especial con es_resultado_real=1 guarda
+  el resultado REAL del concurso, cargado por el admin -- se trata igual
+  que un participante mas para poder reusar el mismo codigo de guardado y
+  de comparacion de puntaje.
+- picks: que candidatas eligio cada participante (o la realidad) en cada
+  nivel (top30/top12/top5/top3).
+- estado: un flag global para cerrar las apuestas antes de que arranque el
+  show real.
+"""
 import sqlite3
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
-from app.data import CANDIDATAS
+from app.data import CANDIDATAS, NIVELES
 
 DB_PATH = Path(__file__).parent.parent / "quiniela.db"
+NOMBRE_RESULTADO_REAL = "RESULTADO REAL"
 
 
 @contextmanager
@@ -21,7 +36,7 @@ def get_conn():
 
 
 def init_db() -> None:
-    """Crea las tablas si no existen y siembra las candidatas la primera vez."""
+    """Crea las tablas si no existen y siembra candidatas + fila de resultado real."""
     with get_conn() as conn:
         conn.executescript(
             """
@@ -29,118 +44,175 @@ def init_db() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 pais TEXT NOT NULL,
                 nombre TEXT NOT NULL,
-                continente TEXT NOT NULL,
-                etapa TEXT NOT NULL DEFAULT 'groups'
+                continente TEXT NOT NULL
             );
 
-            CREATE TABLE IF NOT EXISTS votos (
+            CREATE TABLE IF NOT EXISTS participantes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ronda TEXT NOT NULL,
-                candidata_id INTEGER NOT NULL REFERENCES candidatas(id),
-                votante_id TEXT NOT NULL,
-                creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+                nombre TEXT NOT NULL,
+                cookie_token TEXT UNIQUE,
+                es_resultado_real INTEGER NOT NULL DEFAULT 0,
+                ganadora_id INTEGER REFERENCES candidatas(id),
+                creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+                actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS picks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                participante_id INTEGER NOT NULL REFERENCES participantes(id),
+                nivel TEXT NOT NULL,
+                candidata_id INTEGER NOT NULL REFERENCES candidatas(id)
             );
 
             CREATE TABLE IF NOT EXISTS estado (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
-                ronda_actual TEXT NOT NULL DEFAULT 'groups'
+                apuestas_cerradas INTEGER NOT NULL DEFAULT 0
             );
             """
         )
-        row = conn.execute("SELECT COUNT(*) AS n FROM candidatas").fetchone()
-        if row["n"] == 0:
+        if conn.execute("SELECT COUNT(*) AS n FROM candidatas").fetchone()["n"] == 0:
             conn.executemany(
-                "INSERT INTO candidatas (pais, nombre, continente, etapa) "
-                "VALUES (?, ?, ?, 'groups')",
+                "INSERT INTO candidatas (pais, nombre, continente) VALUES (?, ?, ?)",
                 CANDIDATAS,
             )
+
+        # Migracion defensiva: si la tabla "estado" venia de una version vieja
+        # de la app (sin la columna apuestas_cerradas), se la agregamos en vez
+        # de romper. Asi no hace falta borrar la base de datos al actualizar.
+        columnas_estado = {fila["name"] for fila in conn.execute("PRAGMA table_info(estado)")}
+        if "apuestas_cerradas" not in columnas_estado:
+            conn.execute("ALTER TABLE estado ADD COLUMN apuestas_cerradas INTEGER NOT NULL DEFAULT 0")
+
         if conn.execute("SELECT COUNT(*) AS n FROM estado").fetchone()["n"] == 0:
-            conn.execute("INSERT INTO estado (id, ronda_actual) VALUES (1, 'groups')")
+            conn.execute("INSERT INTO estado (id, apuestas_cerradas) VALUES (1, 0)")
+        existe_real = conn.execute(
+            "SELECT 1 FROM participantes WHERE es_resultado_real = 1"
+        ).fetchone()
+        if not existe_real:
+            conn.execute(
+                "INSERT INTO participantes (nombre, cookie_token, es_resultado_real) "
+                "VALUES (?, NULL, 1)",
+                (NOMBRE_RESULTADO_REAL,),
+            )
 
 
-def get_ronda_actual() -> str:
-    with get_conn() as conn:
-        row = conn.execute("SELECT ronda_actual FROM estado WHERE id = 1").fetchone()
-        return row["ronda_actual"]
-
-
-def set_ronda_actual(ronda: str) -> None:
-    with get_conn() as conn:
-        conn.execute("UPDATE estado SET ronda_actual = ? WHERE id = 1", (ronda,))
-
-
-def candidatas_en_etapa(etapa: str) -> list[sqlite3.Row]:
+def listar_candidatas() -> list[sqlite3.Row]:
     with get_conn() as conn:
         return conn.execute(
-            "SELECT * FROM candidatas WHERE etapa = ? ORDER BY continente, pais",
-            (etapa,),
+            "SELECT * FROM candidatas ORDER BY continente, pais"
         ).fetchall()
 
 
-def ya_voto(ronda: str, votante_id: str) -> bool:
+def apuestas_cerradas() -> bool:
     with get_conn() as conn:
-        row = conn.execute(
-            "SELECT 1 FROM votos WHERE ronda = ? AND votante_id = ? LIMIT 1",
-            (ronda, votante_id),
+        row = conn.execute("SELECT apuestas_cerradas FROM estado WHERE id = 1").fetchone()
+        return bool(row["apuestas_cerradas"])
+
+
+def set_apuestas_cerradas(valor: bool) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE estado SET apuestas_cerradas = ? WHERE id = 1", (int(valor),))
+
+
+def get_participante_por_cookie(token: str) -> sqlite3.Row | None:
+    if not token:
+        return None
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM participantes WHERE cookie_token = ?", (token,)
         ).fetchone()
-        return row is not None
 
 
-def registrar_votos(ronda: str, votante_id: str, candidata_ids: list[int]) -> None:
+def get_resultado_real() -> sqlite3.Row:
     with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM participantes WHERE es_resultado_real = 1"
+        ).fetchone()
+
+
+def obtener_picks(participante_id: int) -> dict[str, list[int]]:
+    with get_conn() as conn:
+        filas = conn.execute(
+            "SELECT nivel, candidata_id FROM picks WHERE participante_id = ?",
+            (participante_id,),
+        ).fetchall()
+    picks: dict[str, list[int]] = {nivel: [] for nivel in NIVELES}
+    for fila in filas:
+        picks.setdefault(fila["nivel"], []).append(fila["candidata_id"])
+    return picks
+
+
+def guardar_apuesta(
+    *, cookie_token: str | None, nombre: str, picks_por_nivel: dict[str, list[int]],
+    ganadora_id: int, es_resultado_real: bool = False,
+) -> str:
+    """Crea o actualiza (upsert) la apuesta de un participante. Devuelve su cookie_token."""
+    with get_conn() as conn:
+        if es_resultado_real:
+            fila = conn.execute(
+                "SELECT id FROM participantes WHERE es_resultado_real = 1"
+            ).fetchone()
+            participante_id = fila["id"]
+            conn.execute(
+                "UPDATE participantes SET ganadora_id = ?, actualizado_en = datetime('now') "
+                "WHERE id = ?",
+                (ganadora_id, participante_id),
+            )
+        else:
+            fila = conn.execute(
+                "SELECT id FROM participantes WHERE cookie_token = ?", (cookie_token,)
+            ).fetchone()
+            if fila:
+                participante_id = fila["id"]
+                conn.execute(
+                    "UPDATE participantes SET nombre = ?, ganadora_id = ?, "
+                    "actualizado_en = datetime('now') WHERE id = ?",
+                    (nombre, ganadora_id, participante_id),
+                )
+            else:
+                cookie_token = cookie_token or str(uuid.uuid4())
+                cur = conn.execute(
+                    "INSERT INTO participantes (nombre, cookie_token, ganadora_id) "
+                    "VALUES (?, ?, ?)",
+                    (nombre, cookie_token, ganadora_id),
+                )
+                participante_id = cur.lastrowid
+
+        conn.execute("DELETE FROM picks WHERE participante_id = ?", (participante_id,))
+        filas_nuevas = [
+            (participante_id, nivel, cid)
+            for nivel, ids in picks_por_nivel.items()
+            for cid in ids
+        ]
         conn.executemany(
-            "INSERT INTO votos (ronda, candidata_id, votante_id) VALUES (?, ?, ?)",
-            [(ronda, cid, votante_id) for cid in candidata_ids],
+            "INSERT INTO picks (participante_id, nivel, candidata_id) VALUES (?, ?, ?)",
+            filas_nuevas,
         )
+    return cookie_token
 
 
-def contar_votantes_unicos(ronda: str) -> int:
+def listar_participantes() -> list[sqlite3.Row]:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM participantes WHERE es_resultado_real = 0 ORDER BY nombre"
+        ).fetchall()
+
+
+def contar_participantes() -> int:
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT COUNT(DISTINCT votante_id) AS n FROM votos WHERE ronda = ?",
-            (ronda,),
+            "SELECT COUNT(*) AS n FROM participantes WHERE es_resultado_real = 0"
         ).fetchone()
         return row["n"]
 
 
-def tally_ronda(ronda: str) -> list[sqlite3.Row]:
-    """Devuelve candidatas de la etapa `ronda` ordenadas por votos (desc)."""
-    with get_conn() as conn:
-        return conn.execute(
-            """
-            SELECT c.*, COALESCE(v.votos, 0) AS votos
-            FROM candidatas c
-            LEFT JOIN (
-                SELECT candidata_id, COUNT(*) AS votos
-                FROM votos WHERE ronda = ?
-                GROUP BY candidata_id
-            ) v ON v.candidata_id = c.id
-            WHERE c.etapa = ?
-            ORDER BY votos DESC, c.pais ASC
-            """,
-            (ronda, ronda),
-        ).fetchall()
-
-
-def actualizar_etapas(ganadoras_ids: list[int], perdedoras_ids: list[int], etapa_siguiente: str) -> None:
-    with get_conn() as conn:
-        conn.executemany(
-            "UPDATE candidatas SET etapa = ? WHERE id = ?",
-            [(etapa_siguiente, cid) for cid in ganadoras_ids],
-        )
-        conn.executemany(
-            "UPDATE candidatas SET etapa = ? WHERE id = ?",
-            [("eliminada", cid) for cid in perdedoras_ids],
-        )
-
-
 def reset_todo() -> None:
     with get_conn() as conn:
-        conn.execute("DELETE FROM votos")
-        conn.execute("DELETE FROM candidatas")
-        conn.executemany(
-            "INSERT INTO candidatas (pais, nombre, continente, etapa) "
-            "VALUES (?, ?, ?, 'groups')",
-            CANDIDATAS,
+        conn.execute("DELETE FROM picks")
+        conn.execute("DELETE FROM participantes")
+        conn.execute(
+            "INSERT INTO participantes (nombre, cookie_token, es_resultado_real) "
+            "VALUES (?, NULL, 1)",
+            (NOMBRE_RESULTADO_REAL,),
         )
-        conn.execute("UPDATE estado SET ronda_actual = 'groups' WHERE id = 1")
+        conn.execute("UPDATE estado SET apuestas_cerradas = 0 WHERE id = 1")

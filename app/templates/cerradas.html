@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Las apuestas estan cerradas - Quiniela Miss Universo{% endblock %}
+{% block content %}
+
+<div class="bg-white rounded-xl shadow p-8 text-center">
+  <p class="text-lg font-semibold text-slate-700">Las apuestas ya cerraron.</p>
+  <p class="text-sm text-slate-500 mt-2">
+    Ya no se pueden cargar ni editar apuestas nuevas. Mirá el ranking para
+    ver como va todo el mundo.
+  </p>
+  <a href="/ranking" class="inline-block mt-6 bg-fuchsia-600 text-white font-bold py-3 px-6 rounded-xl shadow">
+    Ver el ranking
+  </a>
+</div>
+
+{% endblock %}

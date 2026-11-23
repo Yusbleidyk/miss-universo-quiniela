@@ -1,32 +1,39 @@
 # Quiniela Miss Universo
 
-Jueguito para votar entre amigos por WhatsApp: quien pasa de la preliminar
-(elegis 30 de las 116 candidatas) al Top 30, despues al Top 12, Top 5,
-Top 3 y finalmente la ganadora -- calca el formato oficial de la noche
-final real de Miss Universe (edicion 2025, la mas reciente confirmada):
-Top 30 -> Top 12 (traje de bano) -> Top 5 (vestido de noche) -> Top 3
-(preguntas) -> ganadora (pregunta final).
+Quiniela de pronosticos para jugar entre amigos por WhatsApp: cada quien
+arma SU PROPIA apuesta completa (Top 30 -> Top 12 -> Top 5 -> Top 3 ->
+ganadora) y despues, cuando sale el resultado real del concurso, se arma
+un ranking de quien le pego mas.
 
-Ojo: el concurso real NO reparte el Top 30 por continente, es puro puntaje
-de la competencia preliminar entre todas las candidatas juntas -- por eso
-la quiniela tampoco lo hace. El campo "continente" solo se usa para
-organizar visualmente la lista larga de 116 candidatas (subtitulos), no
-para exigir cuotas por region.
+No tiene nada que ver con votar en vivo quien avanza -- es un juego de
+pronosticos tipo "quiniela deportiva", cada uno apuesta antes de saber el
+resultado.
 
-No tiene nada que ver con el resultado real del concurso -- es solo para
-divertirse con el grupo.
+Usa las candidatas de Miss Universe 2026 (116 paises, final el 24/11/2026
+en San Juan, Puerto Rico) y calca el formato oficial de la noche final
+(edicion 2025, la mas reciente confirmada): Top 30 -> Top 12 (traje de
+bano) -> Top 5 (vestido de noche) -> Top 3 (preguntas) -> ganadora
+(pregunta final).
 
 ## Como funciona
 
-- Hay UN SOLO link publico (la home `/`) que mandas por WhatsApp. Siempre
-  muestra la ronda que este abierta en ese momento.
-- Cada persona vota una vez por ronda (se identifica por una cookie en su
-  navegador, no hace falta cuenta ni login).
-- Vos (el admin) tenes un link secreto `/admin?key=...` donde ves los votos
-  en vivo y apretas un boton para cerrar la ronda actual y pasar a la
-  siguiente. Las candidatas mas votadas de cada ronda avanzan solas.
-- Rondas: preliminar (elegis 30 de 116) -> Top 30 -> Top 12 -> Top 5 ->
-  Top 3 -> ganadora.
+- Hay UN SOLO link publico (la home `/`) que mandas por WhatsApp.
+- Cada persona entra, pone su nombre y arma su apuesta en un wizard paso a
+  paso: elige 30 candidatas, despues (DE ESAS 30) elige 12, despues (DE
+  ESAS 12) elige 5, despues (DE ESAS 5) elige 3, y por ultimo elige su
+  ganadora entre esas 3. Cada nivel tiene que salir del anterior -- no se
+  puede predecir que alguien llega al Top 12 si no la pusiste en tu Top 30.
+- Mientras las apuestas esten abiertas, cada quien puede volver a entrar
+  al mismo link y editar su apuesta (se identifica por una cookie, no hace
+  falta cuenta).
+- Vos (el admin) cerras las apuestas antes de que arranque el show real
+  desde tu panel `/admin?key=...`, para que nadie pueda cambiar su apuesta
+  despues de ver como va el concurso.
+- Despues del show, cargas el resultado REAL (el mismo wizard, pero para
+  vos) desde `/admin/resultado?key=...`.
+- Cualquiera puede entrar a `/ranking` (mismo link para todos) y ver quien
+  le pego mas: 1 punto por cada acierto en cada nivel (Top 30, Top 12,
+  Top 5, Top 3) + 10 puntos extra si le pego a la ganadora exacta.
 
 ## Correrlo en tu compu (para probar)
 
@@ -38,9 +45,10 @@ set ADMIN_KEY=ponele-cualquier-clave-larga
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
-Abrí `http://localhost:8000/` para votar y `http://localhost:8000/admin?key=ponele-cualquier-clave-larga`
-para el panel admin. Esto NO sirve para compartir por WhatsApp todavia
-porque solo funciona en tu compu -- para eso segui el paso de abajo.
+Abrí `http://localhost:8000/` para armar una apuesta y
+`http://localhost:8000/admin?key=ponele-cualquier-clave-larga` para el
+panel admin. Esto NO sirve para compartir por WhatsApp todavia porque solo
+funciona en tu compu -- para eso segui el paso de abajo.
 
 ## Subirlo para que el link funcione desde cualquier celular (Render.com, gratis)
 
@@ -48,23 +56,14 @@ No hace falta tarjeta de credito para el plan free de Render.
 
 1. Cre a tu cuenta gratis en https://render.com (podes entrar con tu cuenta
    de GitHub).
-2. Subi esta carpeta a un repo de GitHub (puede ser privado):
-   ```powershell
-   cd miss-universo-quiniela
-   git init
-   git add .
-   git commit -m "Quiniela Miss Universo"
-   ```
-   Despues creá un repo vacio en GitHub y seguí las instrucciones que te da
-   para conectarlo (`git remote add origin ...` y `git push`).
+2. Subi esta carpeta a un repo de GitHub (puede ser privado).
 3. En Render: "New +" -> "Blueprint" -> elegi tu repo. Render va a leer el
    archivo `render.yaml` que ya esta en esta carpeta y va a configurar todo
    solo (incluida una `ADMIN_KEY` generada al azar).
-4. Cuando termine el deploy (1-2 minutos), Render te da una URL tipo
-   `https://quiniela-miss-universo.onrender.com`. Ese es el link que mandas
-   por WhatsApp.
-5. Para ver tu link de admin: en el dashboard de Render, entra al servicio
-   -> pestaña "Environment" -> copiá el valor de `ADMIN_KEY` -> andá a
+4. Cuando termine el deploy (1-2 minutos), Render te da una URL. Ese es el
+   link que mandas por WhatsApp.
+5. Tu link de admin: en el dashboard de Render, entra al servicio ->
+   pestaña "Environment" -> copia el valor de `ADMIN_KEY` -> anda a
    `https://tu-url.onrender.com/admin?key=ESE_VALOR`. Guardatelo, no lo
    compartas en el grupo.
 
@@ -73,32 +72,29 @@ No hace falta tarjeta de credito para el plan free de Render.
 - El servicio se "duerme" si nadie lo visita en 15 minutos, y tarda unos
   30-50 segundos en despertar la primera vez que alguien entra despues de
   eso. Es normal, no esta roto.
-- Los votos se guardan en un archivo (SQLite) dentro del propio servicio.
-  Mientras no hagas un redeploy (no vuelvas a hacer `git push`), los votos
-  quedan ahi tranquilos. Si necesitas hacer un cambio de codigo a mitad de
-  la votacion, avisale al grupo que los votos de esa ronda se van a
-  reiniciar.
+- Las apuestas se guardan en un archivo (SQLite) dentro del propio
+  servicio. Mientras no hagas un redeploy (no vuelvas a hacer `git push`),
+  quedan ahi tranquilas.
 
-## Panel admin: cerrar una ronda
+## Flujo recomendado para el dia del evento
 
-1. Entra a `/admin?key=TU_KEY`.
-2. Mira la barra de votos en vivo por candidata.
-3. Cuando quieras cortar la votacion de esa ronda, apreta "Cerrar ronda y
-   avanzar". Las mas votadas pasan solas a la siguiente ronda (si hay
-   empate justo en el limite, desempata por orden alfabetico de pais -- es
-   un jueguito entre amigos, no hace falta mas precision que esa).
-4. Mandale de nuevo el mismo link de siempre al grupo para que voten la
-   ronda nueva.
+1. Cargar las apuestas de todos ANTES de que arranque la transmision.
+2. Entrar al admin y apretar "Cerrar apuestas" justo antes de que arranque
+   el show (para que nadie edite su apuesta viendo como va el concurso en
+   vivo).
+3. Despues de la final, buscar el resultado oficial (Wikipedia o
+   missuniverse.com) y cargarlo en `/admin/resultado?key=...`.
+4. Compartir el link `/ranking` para que todos vean quien gano la quiniela.
 
 ## Estructura del proyecto
 
 ```
 app/
-  main.py        rutas de FastAPI (/, /vote, /admin, /admin/advance, /admin/reset)
+  main.py        rutas de FastAPI (/, /apostar, /ranking, /admin, /admin/resultado)
   db.py          acceso a SQLite (sin ORM, es chiquito)
-  logic.py       calculo de quien avanza en cada ronda
-  data.py        lista de candidatas Miss Universe 2026 + cuotas por continente/ronda
-  templates/     HTML con Jinja2 + Tailwind (via CDN)
+  logic.py       validacion de apuestas (anidacion) + calculo del ranking
+  data.py        lista de candidatas Miss Universe 2026 + niveles/cupos
+  templates/     HTML con Jinja2 + Tailwind (via CDN), wizard en JS vanilla
 scripts/
-  smoke_test*.py pruebas manuales de punta a punta (no se usan en produccion)
+  smoke_test.py  prueba manual de punta a punta (no se usa en produccion)
 ```
