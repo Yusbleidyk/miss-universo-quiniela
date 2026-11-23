@@ -6,7 +6,6 @@ from collections import defaultdict
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import db, logic
@@ -16,7 +15,6 @@ APP_DIR = os.path.dirname(__file__)
 ADMIN_KEY = (os.environ.get("ADMIN_KEY") or secrets.token_urlsafe(8)).strip()
 
 app = FastAPI(title="Quiniela Miss Universo")
-app.mount("/static", StaticFiles(directory=os.path.join(APP_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(APP_DIR, "templates"))
 
 
