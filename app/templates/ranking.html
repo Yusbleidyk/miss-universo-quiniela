@@ -23,39 +23,29 @@
   Todavía nadie cargó su apuesta.
 </div>
 {% else %}
-<div class="bg-white rounded-xl shadow overflow-hidden">
-  <table class="w-full text-sm">
-    <thead class="bg-fuchsia-50 text-fuchsia-700">
-      <tr>
-        <th class="text-left px-4 py-2">#</th>
-        <th class="text-left px-4 py-2">Nombre</th>
-        <th class="text-right px-4 py-2">Top30</th>
-        <th class="text-right px-4 py-2">Top12</th>
-        <th class="text-right px-4 py-2">Top5</th>
-        <th class="text-right px-4 py-2">Top3</th>
-        <th class="text-center px-4 py-2">Ganadora</th>
-        <th class="text-right px-4 py-2 font-bold">Puntos</th>
-        <th class="text-center px-4 py-2">Detalle</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for fila in tabla %}
-      <tr class="border-t border-slate-100 {{ 'bg-amber-50' if loop.index == 1 else '' }}">
-        <td class="px-4 py-2 text-slate-400">{{ loop.index }}</td>
-        <td class="px-4 py-2 font-semibold">{{ fila.nombre }}</td>
-        <td class="px-4 py-2 text-right">{{ fila.aciertos.top30 }}</td>
-        <td class="px-4 py-2 text-right">{{ fila.aciertos.top12 }}</td>
-        <td class="px-4 py-2 text-right">{{ fila.aciertos.top5 }}</td>
-        <td class="px-4 py-2 text-right">{{ fila.aciertos.top3 }}</td>
-        <td class="px-4 py-2 text-center">{{ "si" if fila.acerto_ganadora else "-" }}</td>
-        <td class="px-4 py-2 text-right font-bold text-fuchsia-700">{{ fila.score }}</td>
-        <td class="px-4 py-2 text-center">
-          <a href="/apuesta/{{ fila.id }}" class="text-fuchsia-600 underline text-xs">ver</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="space-y-3">
+  {% for fila in tabla %}
+  <div class="bg-white rounded-xl shadow p-4 {{ 'ring-2 ring-amber-400' if loop.index == 1 else '' }}">
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400 font-bold">#{{ loop.index }}</span>
+        <span class="font-semibold text-slate-800">{{ fila.nombre }}</span>
+      </div>
+      <span class="text-xl font-extrabold text-fuchsia-700">{{ fila.score }} pts</span>
+    </div>
+    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mb-3">
+      <span>Top30: <strong>{{ fila.aciertos.top30 }}</strong></span>
+      <span>Top12: <strong>{{ fila.aciertos.top12 }}</strong></span>
+      <span>Top5: <strong>{{ fila.aciertos.top5 }}</strong></span>
+      <span>Top3: <strong>{{ fila.aciertos.top3 }}</strong></span>
+      <span>Ganadora: <strong>{{ "si" if fila.acerto_ganadora else "no" }}</strong></span>
+    </div>
+    <a href="/apuesta/{{ fila.id }}"
+      class="block text-center bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-700 font-semibold text-sm py-2 rounded-lg">
+      Ver su apuesta completa
+    </a>
+  </div>
+  {% endfor %}
 </div>
 {% endif %}
 
