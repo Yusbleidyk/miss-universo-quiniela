@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Quiniela Miss Universo{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-b from-fuchsia-100 via-pink-50 to-amber-50 text-slate-800">
+  <header class="bg-gradient-to-r from-fuchsia-600 to-rose-500 text-white shadow-md">
+    <div class="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
+      <span class="text-3xl"></span>
+      <div>
+        <h1 class="text-xl font-bold leading-tight">Quiniela Miss Universo</h1>
+        <p class="text-xs text-fuchsia-100">Votá quién avanza en cada ronda</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="max-w-3xl mx-auto px-4 py-8 text-center text-xs text-slate-400">
+    Armado con  por Skynet
+  </footer>
+</body>
+</html>

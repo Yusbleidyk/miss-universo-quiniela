@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Admin - Quiniela Miss Universo{% endblock %}
+{% block content %}
+
+<div class="bg-white rounded-xl shadow p-4 mb-6">
+  <h2 class="text-lg font-bold text-fuchsia-700">Panel admin</h2>
+  <p class="text-sm text-slate-500">Ronda actual: <strong>{{ nombre_ronda }}</strong></p>
+  {% if ronda != "done" %}
+  <p class="text-sm text-slate-500">{{ votantes }} persona(s) votaron hasta ahora.</p>
+  {% endif %}
+</div>
+
+{% if ronda == "done" %}
+<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+  <p class="font-semibold text-emerald-700">
+    Ganadora: {{ ganadora.pais }} - {{ ganadora.nombre }}
+  </p>
+</div>
+{% else %}
+
+<div class="bg-white rounded-xl shadow p-4 mb-6">
+  <h3 class="font-bold text-slate-700 mb-3">Votos en vivo</h3>
+  {% set max_votos = tally[0].votos if tally else 1 %}
+  <div class="space-y-2">
+    {% for c in tally %}
+    <div>
+      <div class="flex justify-between text-xs text-slate-500">
+        <span><strong>{{ c.pais }}</strong> ({{ c.continente }})</span>
+        <span>{{ c.votos }} voto(s)</span>
+      </div>
+      <div class="w-full bg-slate-100 rounded h-3 overflow-hidden">
+        <div class="bg-fuchsia-500 h-3" style="width: {{ (c.votos / max_votos * 100) if max_votos else 0 }}%"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<form method="post" action="/admin/advance" class="mb-3">
+  <input type="hidden" name="key" value="{{ key }}">
+  <button type="submit"
+    class="w-full bg-fuchsia-600 text-white font-bold py-3 rounded-xl shadow"
+    onclick="return confirm('Seguro que querés cerrar esta ronda y pasar a la siguiente? No se puede deshacer.');">
+    Cerrar ronda y avanzar
+  </button>
+</form>
+
+{% endif %}
+
+<form method="post" action="/admin/reset">
+  <input type="hidden" name="key" value="{{ key }}">
+  <button type="submit"
+    class="w-full bg-slate-200 text-slate-600 font-semibold py-2 rounded-xl"
+    onclick="return confirm('Esto borra TODOS los votos y vuelve a la ronda de grupos. Seguro?');">
+    Reiniciar todo (borra votos)
+  </button>
+</form>
+
+<p class="text-xs text-slate-400 mt-6">
+  Link publico para compartir por WhatsApp: <br>
+  <code class="bg-slate-100 px-2 py-1 rounded">{{ request.url.scheme }}://{{ request.url.netloc }}/</code>
+</p>
+
+{% endblock %}
