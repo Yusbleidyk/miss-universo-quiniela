@@ -63,6 +63,7 @@ def calcular_tabla_posiciones() -> list[dict]:
 
         tabla.append(
             {
+                "id": participante["id"],
                 "nombre": participante["nombre"],
                 "score": score,
                 "aciertos": aciertos_por_nivel,

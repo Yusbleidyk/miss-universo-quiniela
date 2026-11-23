@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Apuesta de {{ nombre }} - Quiniela Miss Universo{% endblock %}
+{% block content %}
+
+<div class="bg-white rounded-xl shadow p-4 mb-4">
+  <h2 class="text-lg font-bold text-fuchsia-700">Apuesta de {{ nombre }}</h2>
+</div>
+
+{% for nivel, titulo in [("top30", "Top 30"), ("top12", "Top 12"), ("top5", "Top 5"), ("top3", "Top 3")] %}
+<div class="bg-white rounded-xl shadow p-4 mb-4">
+  <h3 class="font-bold text-fuchsia-700 mb-2">{{ titulo }}</h3>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    {% for c in detalle.get(nivel, []) %}
+    <div class="bg-fuchsia-50 rounded-lg px-3 py-2 text-sm {{ 'ring-2 ring-amber-400' if c.id == ganadora_id else '' }}">
+      <strong>{{ c.pais }}</strong> - {{ c.nombre }}
+      {% if c.id == ganadora_id %}<span class="text-amber-600 font-bold"> &#9733; ganadora elegida</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+<a href="/ranking" class="inline-block mt-2 text-fuchsia-600 font-semibold text-sm">&larr; Volver al ranking</a>
+
+{% endblock %}

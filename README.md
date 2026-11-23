@@ -33,7 +33,9 @@ bano) -> Top 5 (vestido de noche) -> Top 3 (preguntas) -> ganadora
   vos) desde `/admin/resultado?key=...`.
 - Cualquiera puede entrar a `/ranking` (mismo link para todos) y ver quien
   le pego mas: 1 punto por cada acierto en cada nivel (Top 30, Top 12,
-  Top 5, Top 3) + 10 puntos extra si le pego a la ganadora exacta.
+  Top 5, Top 3) + 10 puntos extra si le pego a la ganadora exacta. Desde
+  ahi tambien se puede ver el detalle completo de la apuesta de cada
+  persona (que eligio en cada nivel) con el link "ver" de cada fila.
 
 ## Correrlo en tu compu (para probar)
 

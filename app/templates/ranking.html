@@ -35,6 +35,7 @@
         <th class="text-right px-4 py-2">Top3</th>
         <th class="text-center px-4 py-2">Ganadora</th>
         <th class="text-right px-4 py-2 font-bold">Puntos</th>
+        <th class="text-center px-4 py-2">Detalle</th>
       </tr>
     </thead>
     <tbody>
@@ -48,6 +49,9 @@
         <td class="px-4 py-2 text-right">{{ fila.aciertos.top3 }}</td>
         <td class="px-4 py-2 text-center">{{ "si" if fila.acerto_ganadora else "-" }}</td>
         <td class="px-4 py-2 text-right font-bold text-fuchsia-700">{{ fila.score }}</td>
+        <td class="px-4 py-2 text-center">
+          <a href="/apuesta/{{ fila.id }}" class="text-fuchsia-600 underline text-xs">ver</a>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

@@ -135,6 +135,25 @@ def ranking(request: Request):
     )
 
 
+@app.get("/apuesta/{participante_id}", response_class=HTMLResponse)
+def ver_apuesta(request: Request, participante_id: int):
+    participante = db.get_participante_por_id(participante_id)
+    if not participante or participante["es_resultado_real"]:
+        return HTMLResponse("<h1>404 - no existe esa apuesta</h1>", status_code=404)
+
+    detalle = db.obtener_picks_detallados(participante_id)
+    ganadora = db.get_participante_por_id(participante_id)["ganadora_id"]
+    return templates.TemplateResponse(
+        request,
+        "detalle_apuesta.html",
+        {
+            "nombre": participante["nombre"],
+            "detalle": detalle,
+            "ganadora_id": ganadora,
+        },
+    )
+
+
 # ---------------------------------------------------------------------------
 # Admin: no hay login de verdad, es un link secreto con una key. Para un
 # jueguito entre amigos por WhatsApp alcanza y sobra (no lo compartas).

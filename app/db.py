@@ -130,6 +130,13 @@ def get_resultado_real() -> sqlite3.Row:
         ).fetchone()
 
 
+def get_participante_por_id(participante_id: int) -> sqlite3.Row | None:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM participantes WHERE id = ?", (participante_id,)
+        ).fetchone()
+
+
 def obtener_picks(participante_id: int) -> dict[str, list[int]]:
     with get_conn() as conn:
         filas = conn.execute(
@@ -140,6 +147,24 @@ def obtener_picks(participante_id: int) -> dict[str, list[int]]:
     for fila in filas:
         picks.setdefault(fila["nivel"], []).append(fila["candidata_id"])
     return picks
+
+
+def obtener_picks_detallados(participante_id: int) -> dict[str, list[sqlite3.Row]]:
+    """Igual que obtener_picks pero trae pais/nombre de cada candidata (para mostrar)."""
+    with get_conn() as conn:
+        filas = conn.execute(
+            """
+            SELECT p.nivel, c.id, c.pais, c.nombre
+            FROM picks p JOIN candidatas c ON c.id = p.candidata_id
+            WHERE p.participante_id = ?
+            ORDER BY c.pais
+            """,
+            (participante_id,),
+        ).fetchall()
+    detalle: dict[str, list[sqlite3.Row]] = {nivel: [] for nivel in NIVELES}
+    for fila in filas:
+        detalle.setdefault(fila["nivel"], []).append(fila)
+    return detalle
 
 
 def guardar_apuesta(
