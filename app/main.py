@@ -6,6 +6,7 @@ import json
 import os
 import secrets
 import uuid
+from urllib.parse import quote
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -189,53 +190,107 @@ def admin_toggle_apuestas(key: str = Form(...)):
     return RedirectResponse(f"/admin?key={key}", status_code=303)
 
 
+NIVELES_RESULTADO = NIVELES + ["ganadora"]
+
+
 @app.get("/admin/resultado", response_class=HTMLResponse)
-def admin_resultado_form(request: Request, key: str = ""):
+def admin_resultado_dashboard(request: Request, key: str = ""):
     if not _chequear_key(key):
         return HTMLResponse("<h1>401 - key invalida</h1>", status_code=401)
 
     real = db.get_resultado_real()
-    picks_previos = db.obtener_picks(real["id"])
+    picks_reales = db.obtener_picks(real["id"])
+
+    filas = []
+    habilitado = True
+    for nivel in NIVELES:
+        cantidad = len(picks_reales.get(nivel, []))
+        cargado = cantidad == CUPOS[nivel]
+        filas.append({"nivel": nivel, "cargado": cargado, "cantidad": cantidad, "habilitado": habilitado})
+        habilitado = cargado
+
+    ganadora = None
+    if real["ganadora_id"]:
+        todas = {c["id"]: c for c in db.listar_candidatas()}
+        ganadora = todas.get(real["ganadora_id"])
+    filas.append({
+        "nivel": "ganadora", "cargado": real["ganadora_id"] is not None,
+        "cantidad": 1 if real["ganadora_id"] else 0, "habilitado": habilitado,
+        "ganadora_nombre": f"{ganadora['pais']} - {ganadora['nombre']}" if ganadora else None,
+    })
+
     return templates.TemplateResponse(
-        request,
-        "apostar.html",
-        _wizard_contexto(
-            request, es_admin=True, picks_previos=picks_previos,
-            ganadora_previa=real["ganadora_id"],
-        ),
+        request, "admin_resultado.html", {"key": key, "filas": filas}
     )
 
 
-@app.post("/admin/resultado")
-async def admin_resultado_guardar(request: Request):
+@app.get("/admin/resultado/{nivel}", response_class=HTMLResponse)
+def admin_resultado_nivel_form(request: Request, nivel: str, key: str = "", error: str = ""):
+    if not _chequear_key(key):
+        return HTMLResponse("<h1>401 - key invalida</h1>", status_code=401)
+    if nivel not in NIVELES_RESULTADO:
+        return HTMLResponse("<h1>404</h1>", status_code=404)
+
+    real = db.get_resultado_real()
+    picks_reales = db.obtener_picks(real["id"])
+    todas = {c["id"]: c for c in db.listar_candidatas()}
+
+    if nivel == "ganadora":
+        candidatas_disponibles = [todas[cid] for cid in picks_reales.get("top3", []) if cid in todas]
+        seleccion_previa = [real["ganadora_id"]] if real["ganadora_id"] else []
+        cupo = 1
+        tipo_input = "radio"
+    else:
+        origen = ORIGEN[nivel]
+        if origen is None:
+            candidatas_disponibles = list(db.listar_candidatas())
+        else:
+            candidatas_disponibles = [todas[cid] for cid in picks_reales.get(origen, []) if cid in todas]
+        seleccion_previa = picks_reales.get(nivel, [])
+        cupo = CUPOS[nivel]
+        tipo_input = "checkbox"
+
+    return templates.TemplateResponse(
+        request,
+        "admin_nivel.html",
+        {
+            "key": key,
+            "nivel": nivel,
+            "cupo": cupo,
+            "tipo_input": tipo_input,
+            "candidatas": candidatas_disponibles,
+            "seleccion_previa": set(seleccion_previa),
+            "error": error,
+        },
+    )
+
+
+@app.post("/admin/resultado/{nivel}")
+async def admin_resultado_nivel_guardar(request: Request, nivel: str):
     form = await request.form()
     key = form.get("key", "")
     if not _chequear_key(key):
         return HTMLResponse("<h1>401 - key invalida</h1>", status_code=401)
+    if nivel not in NIVELES_RESULTADO:
+        return HTMLResponse("<h1>404</h1>", status_code=404)
 
-    picks_por_nivel = {
-        nivel: [int(v) for k, v in form.multi_items() if k == nivel] for nivel in NIVELES
-    }
-    ganadora_raw = form.get("ganadora")
-    ganadora_id = int(ganadora_raw) if ganadora_raw else None
+    ids = [int(v) for k, v in form.multi_items() if k == "candidata"]
 
-    error = logic.validar_apuesta(picks_por_nivel, ganadora_id)
+    if nivel == "ganadora":
+        ganadora_id = ids[0] if ids else None
+        error = logic.validar_ganadora_real(ganadora_id)
+        if not error:
+            db.guardar_resultado_ganadora(ganadora_id)
+    else:
+        error = logic.validar_nivel_real(nivel, ids)
+        if not error:
+            db.guardar_resultado_nivel(nivel, ids)
+
     if error:
-        return templates.TemplateResponse(
-            request,
-            "apostar.html",
-            _wizard_contexto(
-                request, es_admin=True, picks_previos=picks_por_nivel,
-                ganadora_previa=ganadora_id, error=error,
-            ),
-            status_code=400,
+        return RedirectResponse(
+            f"/admin/resultado/{nivel}?key={key}&error={quote(error)}", status_code=303
         )
-
-    db.guardar_apuesta(
-        cookie_token=None, nombre=db.NOMBRE_RESULTADO_REAL, picks_por_nivel=picks_por_nivel,
-        ganadora_id=ganadora_id, es_resultado_real=True,
-    )
-    return RedirectResponse(f"/ranking", status_code=303)
+    return RedirectResponse(f"/admin/resultado?key={key}", status_code=303)
 
 
 @app.post("/admin/reset")

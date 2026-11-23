@@ -25,7 +25,7 @@ import uuid
 
 from sqlalchemy import (
     Boolean, Column, DateTime, ForeignKey, Integer, MetaData, String,
-    Table, create_engine, delete, func, insert, select, update,
+    Table, and_, create_engine, delete, func, insert, select, update,
 )
 
 from app.data import CANDIDATAS, NIVELES
@@ -215,6 +215,35 @@ def guardar_apuesta(
         if filas_nuevas:
             conn.execute(insert(picks), filas_nuevas)
     return cookie_token
+
+
+def guardar_resultado_nivel(nivel: str, candidata_ids: list[int]) -> None:
+    """Guarda (reemplazando) el resultado REAL de un solo nivel, para poder
+    cargarlo de a uno a medida que el show real los va anunciando."""
+    with engine.begin() as conn:
+        participante_id = conn.execute(
+            select(participantes.c.id).where(participantes.c.es_resultado_real.is_(True))
+        ).scalar_one()
+        conn.execute(
+            delete(picks).where(
+                and_(picks.c.participante_id == participante_id, picks.c.nivel == nivel)
+            )
+        )
+        if candidata_ids:
+            conn.execute(
+                insert(picks),
+                [{"participante_id": participante_id, "nivel": nivel, "candidata_id": cid}
+                 for cid in candidata_ids],
+            )
+
+
+def guardar_resultado_ganadora(candidata_id: int) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            update(participantes)
+            .where(participantes.c.es_resultado_real.is_(True))
+            .values(ganadora_id=candidata_id, actualizado_en=func.now())
+        )
 
 
 def listar_participantes():

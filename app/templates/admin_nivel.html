@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Cargar {{ nivel }} real - Quiniela Miss Universo{% endblock %}
+{% block content %}
+
+<div class="bg-white rounded-xl shadow p-4 mb-4">
+  <h2 class="text-lg font-bold text-fuchsia-700">
+    {% if nivel == "ganadora" %}¿Quién ganó de verdad?{% else %}Cargar el {{ nivel | upper }} real{% endif %}
+  </h2>
+  <p class="text-sm text-slate-500 mt-1">
+    {% if nivel == "ganadora" %}
+      Elegí la ganadora real entre las 3 del Top 3 real.
+    {% else %}
+      Elegí exactamente {{ cupo }} candidatas: las que de verdad quedaron en este corte.
+    {% endif %}
+  </p>
+</div>
+
+{% if error %}
+<div class="bg-rose-50 border border-rose-200 rounded-xl p-4 mb-4 text-rose-700 text-sm">
+  {{ error }}
+</div>
+{% endif %}
+
+<form method="post" action="/admin/resultado/{{ nivel }}">
+  <input type="hidden" name="key" value="{{ key }}">
+  <div class="bg-white rounded-xl shadow p-4 mb-4">
+    <p class="text-xs text-slate-500 mb-2"><span id="contador">0 / {{ cupo }}</span></p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {% for c in candidatas %}
+      <label class="flex items-center gap-2 bg-fuchsia-50 hover:bg-fuchsia-100 rounded-lg px-3 py-2 cursor-pointer text-sm">
+        <input type="{{ tipo_input }}" name="candidata" value="{{ c.id }}"
+          class="entrada accent-fuchsia-600" {{ 'checked' if c.id in seleccion_previa else '' }}>
+        <span><strong>{{ c.pais }}</strong> - {{ c.nombre }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  <button type="submit" id="btn-guardar" {{ 'disabled' if not seleccion_previa else '' }}
+    class="w-full bg-emerald-600 disabled:bg-slate-300 text-white font-bold py-3 rounded-xl shadow">
+    Guardar
+  </button>
+</form>
+
+<a href="/admin/resultado?key={{ key }}" class="inline-block mt-4 text-fuchsia-600 font-semibold text-sm">&larr; Volver</a>
+
+<script>
+  const cupo = {{ cupo }};
+  const esRadio = {{ "true" if tipo_input == "radio" else "false" }};
+  const entradas = Array.from(document.querySelectorAll('.entrada'));
+  const contador = document.getElementById('contador');
+  const btnGuardar = document.getElementById('btn-guardar');
+
+  function actualizar() {
+    const marcados = entradas.filter((i) => i.checked);
+    if (!esRadio) {
+      entradas.forEach((i) => { i.disabled = !i.checked && marcados.length >= cupo; });
+    }
+    contador.textContent = `${marcados.length} / ${cupo}`;
+    btnGuardar.disabled = marcados.length !== cupo;
+  }
+
+  entradas.forEach((i) => i.addEventListener('change', actualizar));
+  actualizar();
+</script>
+
+{% endblock %}

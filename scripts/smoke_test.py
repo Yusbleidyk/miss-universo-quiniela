@@ -87,14 +87,34 @@ print("5) A edita su propia apuesta (mismo navegador, debe quedar una sola fila,
 r = post_form(opener_a, "/apostar", payload_a)
 assert r.status == 200
 
-print("6) Admin carga el resultado real...")
-payload_real = apuesta_payload(None, ids[0:30], ids[0:12], ids[0:5], ids[0:3], ids[0])
-payload_real.append(("key", ADMIN_KEY))
-r = post_form(admin_opener, "/admin/resultado", payload_real)
-print("   status:", r.status)
-assert r.status == 200
+print("6) Admin intenta cargar top12 real ANTES del top30 real (debe fallar, nivel bloqueado)...")
+r = post_form(
+    admin_opener, "/admin/resultado/top12",
+    [("key", ADMIN_KEY)] + [("candidata", i) for i in ids[0:12]],
+)
+dashboard = get(admin_opener, f"/admin/resultado?key={ADMIN_KEY}").read().decode()
+print("   top12 sigue sin cargar (correcto):", "Todavía no se cargó" in dashboard)
 
-print("7) Chequeo el ranking...")
+print("7) Admin carga el resultado real, nivel por nivel (como se haria en vivo)...")
+for nivel, elegidas in [
+    ("top30", ids[0:30]), ("top12", ids[0:12]), ("top5", ids[0:5]), ("top3", ids[0:3]),
+]:
+    r = post_form(
+        admin_opener, f"/admin/resultado/{nivel}",
+        [("key", ADMIN_KEY)] + [("candidata", i) for i in elegidas],
+    )
+    dashboard = get(admin_opener, f"/admin/resultado?key={ADMIN_KEY}").read().decode()
+    print(f"   {nivel} cargado:", f"Cargado ({len(elegidas)} candidatas)" in dashboard)
+    assert f"Cargado ({len(elegidas)} candidatas)" in dashboard
+r = post_form(
+    admin_opener, "/admin/resultado/ganadora",
+    [("key", ADMIN_KEY), ("candidata", ids[0])],
+)
+dashboard = get(admin_opener, f"/admin/resultado?key={ADMIN_KEY}").read().decode()
+print("   ganadora cargada:", "Cargada:" in dashboard)
+assert "Cargada:" in dashboard
+
+print("8) Chequeo el ranking...")
 html = get(admin_opener, "/ranking").read().decode()
 assert "Ana" in html and "Beto" in html
 print("   Ana y Beto aparecen en el ranking: OK")
@@ -104,7 +124,7 @@ pos_beto = html.index("Beto")
 print("   orden en la tabla (Ana antes que Beto esperado):", pos_ana < pos_beto)
 assert pos_ana < pos_beto
 
-print("8) Cierro las apuestas y confirmo que ya no se puede cargar/editar...")
+print("9) Cierro las apuestas y confirmo que ya no se puede cargar/editar...")
 r = post_form(admin_opener, "/admin/toggle-apuestas", [("key", ADMIN_KEY)])
 assert r.status == 200
 html_home = get(nueva_sesion(), "/").read().decode()

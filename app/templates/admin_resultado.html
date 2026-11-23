@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Cargar resultado real - Quiniela Miss Universo{% endblock %}
+{% block content %}
+
+<div class="bg-white rounded-xl shadow p-4 mb-4">
+  <h2 class="text-lg font-bold text-fuchsia-700">Cargar el resultado real</h2>
+  <p class="text-sm text-slate-500 mt-1">
+    Cargá cada corte a medida que el show real lo va anunciando. El
+    ranking se actualiza solo apenas guardes cada uno.
+  </p>
+</div>
+
+<div class="space-y-3">
+  {% for fila in filas %}
+  <div class="bg-white rounded-xl shadow p-4 {{ 'opacity-50' if not fila.habilitado else '' }}">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="font-bold text-slate-700">
+          {% if fila.nivel == "ganadora" %}Ganadora{% else %}{{ fila.nivel | upper }}{% endif %}
+        </p>
+        {% if fila.cargado %}
+          <p class="text-sm text-emerald-600">
+            {% if fila.nivel == "ganadora" %}
+              Cargada: {{ fila.ganadora_nombre }}
+            {% else %}
+              Cargado ({{ fila.cantidad }} candidatas)
+            {% endif %}
+          </p>
+        {% elif fila.habilitado %}
+          <p class="text-sm text-slate-400">Todavía no se cargó</p>
+        {% else %}
+          <p class="text-sm text-slate-400">Cargá primero el nivel anterior</p>
+        {% endif %}
+      </div>
+      {% if fila.habilitado %}
+      <a href="/admin/resultado/{{ fila.nivel }}?key={{ key }}"
+        class="bg-fuchsia-600 text-white font-semibold text-sm px-4 py-2 rounded-lg">
+        {{ 'Editar' if fila.cargado else 'Cargar' }}
+      </a>
+      {% else %}
+      <span class="bg-slate-100 text-slate-400 font-semibold text-sm px-4 py-2 rounded-lg">
+        Bloqueado
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<a href="/admin?key={{ key }}" class="inline-block mt-6 text-fuchsia-600 font-semibold text-sm">&larr; Volver al panel admin</a>
+
+{% endblock %}
